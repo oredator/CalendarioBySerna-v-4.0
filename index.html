@@ -337,8 +337,20 @@ html, body {
     }
 
     function loadData(month, year) {
-        return JSON.parse(localStorage.getItem(getStorageKey(month, year))) || {};
-    }
+    let data = JSON.parse(localStorage.getItem(`calendarData-${month}-${year}`)) || {};
+    
+    // 🔹 Si hay imágenes en `localStorage`, asegurarnos de que se muestran en la página
+    Object.keys(data).forEach(day => {
+        data[day].forEach(item => {
+            if (item.image) {
+                console.log(`Imagen recuperada para el día ${day}:`, item.image);
+            }
+        });
+    });
+
+    return data;
+}
+
 
     function renderCalendar(month, year) {
     calendarDays.innerHTML = "";
@@ -435,25 +447,26 @@ function addSelectPair(container, month, year, day, savedValues = { asset: "", r
     ratioInput.type = "number";
     ratioInput.placeholder = "Ingrese ratio";
     ratioInput.value = savedValues.ratio || "";
-    ratioInput.min = "-9999";  // Permitir números negativos
-    ratioInput.step = "0.01";  // Precisión de dos decimales
+    ratioInput.min = "0";
+    ratioInput.step = "0.1";
 
     // Botón para añadir imagen
     let imageButton = document.createElement("button");
     imageButton.textContent = "Añadir Imagen";
     imageButton.classList.add("image-button");
 
-    // Input oculto para seleccionar imagen
+    // Input oculto para cargar la imagen
     let imageInput = document.createElement("input");
     imageInput.type = "file";
     imageInput.accept = "image/*";
     imageInput.style.display = "none";
 
-    // Imagen de vista previa
+    // Imagen mostrada si ya hay una guardada
     let imagePreview = document.createElement("img");
     imagePreview.classList.add("image-preview");
-
+    
     if (savedValues.image) {
+        console.log(`Mostrando imagen guardada: ${savedValues.image}`); // 🔹 Verificar en consola
         imagePreview.src = savedValues.image;
         imagePreview.style.display = "block";
     } else {
@@ -462,61 +475,44 @@ function addSelectPair(container, month, year, day, savedValues = { asset: "", r
 
     imageButton.onclick = () => imageInput.click();
 
-    const IMGUR_CLIENT_ID = "e6aa7a404972d34"; // Reemplázalo con tu Client ID de Imgur
+    imageInput.onchange = function () {
+        let file = imageInput.files[0];
+        if (file) {
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                let base64Image = e.target.result.split(",")[1];
 
-        imageInput.onchange = function () {
-            let file = imageInput.files[0];
-            if (file) {
-                let reader = new FileReader();
-                reader.onload = function (e) {
-                    let base64Image = e.target.result.split(",")[1]; // Extraer Base64 puro
-
-                    // Subir la imagen a Imgur
-                    fetch("https://api.imgur.com/3/image", {
-                        method: "POST",
-                        headers: {
-                            Authorization: "Client-ID " + IMGUR_CLIENT_ID,
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ image: base64Image }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            let imageUrl = data.data.link; // URL de la imagen en Imgur
-                            imagePreview.src = imageUrl;
-                            imagePreview.style.display = "block";
-
-                            savedValues.image = imageUrl; // Guardar URL en lugar de Base64
-                            saveDaySelections(month, year, day, container);
-                        } else {
-                            alert("Error al subir la imagen a Imgur");
-                        }
-                    })
-                    .catch(error => console.error("Error:", error));
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
+                // Subir la imagen a Imgur
+                fetch("https://api.imgur.com/3/image", {
+                    method: "POST",
+                    headers: {
+                        Authorization: "Client-ID TU_CLIENT_ID_AQUI",
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ image: base64Image }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let imageUrl = data.data.link;
+                        console.log("Imagen subida con éxito:", imageUrl); // 🔹 Verificar en consola
+                        imagePreview.src = imageUrl;
+                        imagePreview.style.display = "block";
+                        savedValues.image = imageUrl;
+                        saveDaySelections(month, year, day, container);
+                    } else {
+                        console.error("Error al subir la imagen a Imgur:", data);
+                        alert("Error al subir la imagen a Imgur");
+                    }
+                })
+                .catch(error => console.error("Error en la solicitud:", error));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     imagePreview.onclick = function () {
         openImageModal(imagePreview.src);
-    };
-
-    assetSelect.onchange = () => {
-        if (assetSelect.value === "Eliminar") {
-            container.removeChild(pairContainer);
-            saveDaySelections(month, year, day, container);
-        } else {
-            saveDaySelections(month, year, day, container);
-        }
-        updateTotalRatio(container, month, year, day);
-    };
-
-    ratioInput.oninput = () => {
-        saveDaySelections(month, year, day, container);
-        updateTotalRatio(container, month, year, day);
     };
 
     pairContainer.appendChild(assetSelect);
@@ -525,9 +521,8 @@ function addSelectPair(container, month, year, day, savedValues = { asset: "", r
     pairContainer.appendChild(imageInput);
     pairContainer.appendChild(imagePreview);
     container.appendChild(pairContainer);
-
-    updateTotalRatio(container, month, year, day);
 }
+
 
 
 
@@ -538,19 +533,18 @@ function saveDaySelections(month, year, day, container) {
     let selections = [...container.children].map(pair => ({
         asset: pair.children[0].value,
         ratio: pair.children[1].value,
-        image: pair.children[4].src || "" // Guardamos la URL en `localStorage`
+        image: pair.children[4].src || "" // 🔹 Guardamos la URL de Imgur en `localStorage`
     })).filter(pair => pair.asset !== "Eliminar");
 
     let data = loadData(month, year);
-
     if (selections.length > 0) {
         data[day] = selections;
     } else {
-        delete data[day];
+        delete data[day]; // Si no hay datos, eliminar el día del almacenamiento
     }
-
     saveData(month, year, data);
 }
+
 
 
 
