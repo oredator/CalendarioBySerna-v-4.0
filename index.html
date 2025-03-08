@@ -462,19 +462,43 @@ function addSelectPair(container, month, year, day, savedValues = { asset: "", r
 
     imageButton.onclick = () => imageInput.click();
 
-    imageInput.onchange = function () {
-        let file = imageInput.files[0];
-        if (file) {
-            let reader = new FileReader();
-            reader.onload = function (e) {
-                imagePreview.src = e.target.result;
-                imagePreview.style.display = "block";
-                savedValues.image = e.target.result;
-                saveDaySelections(month, year, day, container);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+    const IMGUR_CLIENT_ID = "e6aa7a404972d34"; // Reemplázalo con tu Client ID de Imgur
+
+        imageInput.onchange = function () {
+            let file = imageInput.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = function (e) {
+                    let base64Image = e.target.result.split(",")[1]; // Extraer Base64 puro
+
+                    // Subir la imagen a Imgur
+                    fetch("https://api.imgur.com/3/image", {
+                        method: "POST",
+                        headers: {
+                            Authorization: "Client-ID " + IMGUR_CLIENT_ID,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ image: base64Image }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            let imageUrl = data.data.link; // URL de la imagen en Imgur
+                            imagePreview.src = imageUrl;
+                            imagePreview.style.display = "block";
+
+                            savedValues.image = imageUrl; // Guardar URL en lugar de Base64
+                            saveDaySelections(month, year, day, container);
+                        } else {
+                            alert("Error al subir la imagen a Imgur");
+                        }
+                    })
+                    .catch(error => console.error("Error:", error));
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
 
     imagePreview.onclick = function () {
         openImageModal(imagePreview.src);
@@ -514,7 +538,7 @@ function saveDaySelections(month, year, day, container) {
     let selections = [...container.children].map(pair => ({
         asset: pair.children[0].value,
         ratio: pair.children[1].value,
-        image: pair.children[4].src || ""
+        image: pair.children[4].src || "" // Guardamos la URL en `localStorage`
     })).filter(pair => pair.asset !== "Eliminar");
 
     let data = loadData(month, year);
@@ -527,6 +551,7 @@ function saveDaySelections(month, year, day, container) {
 
     saveData(month, year, data);
 }
+
 
 
 function openImageModal(imageSrc) {
