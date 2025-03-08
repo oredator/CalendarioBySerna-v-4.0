@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario con Opciones</title>
+    <style>
+/* Centrar completamente el calendario en la pantalla */
+html, body {
+    font-family: Arial, sans-serif;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    background-color: #f4f4f4;
+    overflow: auto;
+}
+
+
+/* Ajustar el tamaño del contenedor del calendario */
+.calendar-container {
+    width: fit-content;
+    max-width: 95vw; /* Asegura que no se desborde en pantallas pequeñas */
+    min-height: fit-content;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Evita que los días se salgan */
+    margin: auto; /* Centra el calendario */
+}
+
+/* Mantener el header del calendario centrado */
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    top: 0;
+    background: white;
+    z-index: 10;
+    padding: 10px 0;
+}
+
+
+.calendar-header button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.calendar-header button:hover {
+    color: blue;
+}
+
+/* Asegurar que los nombres de los días y los días del calendario tengan la misma estructura */
+.days-of-week {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr); /* 7 días + espacio extra para el total semanal */
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-align: center;
+    width: 100%; /* Asegurar que ocupe todo el ancho */
+}
+
+/* Asegurar que el contenedor de los días coincida en tamaño con los nombres */
+.calendar-days {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    width: 100%;
+}
+
+/* Asegurar que cada semana se alinee correctamente */
+.week-container {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr); /* 7 días + 1 total de semana */
+    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Día del calendario */
+.day {
+    width: 95px;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    padding: 8px;
+    position: relative;
+}
+
+/* Día actual */
+.day.today {
+    background: #ff5733;
+    color: white;
+    font-weight: bold;
+}
+
+/* Colores según el total del día */
+.day.positive {
+    background: #c8f7c5; /* Verde claro */
+}
+
+.day.negative {
+    background: #f7c5c5; /* Rojo claro */
+}
+
+.day.neutral {
+    background: #ddd; /* Gris */
+}
+
+/* Estilos para la suma semanal */
+.week-total {
+    font-weight: bold;
+    background: #fff;
+    border: 2px solid #000;
+    padding: 5px;
+    text-align: center;
+    border-radius: 5px;
+    width: 100px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Espaciado entre semanas */
+.week-container + .week-container {
+    margin-top: 10px;
+}
+
+/* Estilos para select e input */
+.day select,
+.day input[type="number"] {
+    width: 90%;
+    font-size: 12px;
+    margin-top: 3px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background: white;
+    text-align: center;
+}
+
+/* Resaltar cuando el input está en uso */
+.day input[type="number"]:focus {
+    outline: 2px solid #3498db;
+    border-color: #3498db;
+}
+
+/* Botón "Nuevo" */
+.new-button {
+    width: 60px;
+    font-size: 12px;
+    padding: 3px;
+    margin-top: 5px;
+    cursor: pointer;
+    border: none;
+    background-color: #3498db;
+    color: white;
+    border-radius: 5px;
+}
+
+.new-button:hover {
+    background-color: #2980b9;
+}
+
+/* Contenedor de selects y inputs */
+.select-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 5px;
+    gap: 5px;
+}
+
+/* Botón de imagen */
+.image-button {
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    padding: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+.image-button:hover {
+    background-color: #27ae60;
+}
+
+/* Previsualización de imagen */
+.image-preview {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+}
+
+/* Estilos para el modal */
+.image-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    position: relative;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.modal-image {
+    max-width: 90%;
+    max-height: 80vh;
+    border-radius: 10px;
+}
+
+.close-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+/* Colores según el total del día */
+.day.positive {
+    background: #c8f7c5; /* Verde claro */
+}
+
+.day.negative {
+    background: #f7c5c5; /* Rojo claro */
+}
+
+.day.neutral {
+    background: #ddd; /* Gris */
+}
+
+/* Estilos para la suma semanal */
+.week-total {
+    font-weight: bold;
+    background: #fff;
+    border: 2px solid #000;
+    padding: 5px;
+    text-align: center;
+    border-radius: 5px;
+    width: 100px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Espaciado entre semanas */
+.week-container + .week-container {
+    margin-top: 10px;
+}
+/* Ocultar el header cuando se abra una imagen */
+.hide-header .calendar-header {
+    display: none;
+}
+
+/* Estilos para el resultado semanal */
+.positive-week {
+    background: #c8f7c5 !important; /* Verde claro */
+    border: 2px solid #27ae60;
+}
+
+.negative-week {
+    background: #f7c5c5 !important; /* Rojo claro */
+    border: 2px solid #c0392b;
+}
+
+.neutral-week {
+    background: #ddd !important; /* Gris */
+    border: 2px solid #aaa;
+}
+
+
+    </style>
+</head>
+<body>
+
+<div class="calendar-container">
+    <div class="calendar-header">
+        <button onclick="changeMonth(-1)">⬅</button>
+        <h2 id="month-year"></h2>
+        <button onclick="changeMonth(1)">➡</button>
+    </div>
+    <div class="days-of-week">
+        <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
+    </div>
+    <div class="calendar-days" id="calendar-days"></div>
+</div>
+
+<script>
+    const monthYear = document.getElementById("month-year");
+    const calendarDays = document.getElementById("calendar-days");
+
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+
+    function getStorageKey(month, year) {
+        return `calendarData-${month}-${year}`;
+    }
+
+    function saveData(month, year, data) {
+        localStorage.setItem(getStorageKey(month, year), JSON.stringify(data));
+    }
+
+    function loadData(month, year) {
+        return JSON.parse(localStorage.getItem(getStorageKey(month, year))) || {};
+    }
+
+    function renderCalendar(month, year) {
+    calendarDays.innerHTML = "";
+    monthYear.innerText = new Date(year, month).toLocaleString("es-ES", { month: "long", year: "numeric" });
+
+    let firstDay = new Date(year, month, 1).getDay();
+    let lastDate = new Date(year, month + 1, 0).getDate();
+    let savedData = loadData(month, year);
+
+    let weekContainer = document.createElement("div");
+    weekContainer.classList.add("week-container");
+
+    // Asegurar que la primera fila comienza en el día correcto
+    for (let i = 0; i < firstDay; i++) {
+        let emptyDiv = document.createElement("div");
+        emptyDiv.classList.add("empty");
+        weekContainer.appendChild(emptyDiv);
+    }
+
+    for (let day = 1; day <= lastDate; day++) {
+        let dayDiv = document.createElement("div");
+        dayDiv.classList.add("day");
+        dayDiv.innerHTML = `<b>${day}</b>`;
+
+        if (day === currentDate.getDate() && month === currentDate.getMonth() && year === currentDate.getFullYear()) {
+            dayDiv.classList.add("today");
+        }
+
+        let selectContainer = document.createElement("div");
+        selectContainer.classList.add("select-container");
+
+        let newButton = document.createElement("button");
+        newButton.textContent = "Nuevo";
+        newButton.classList.add("new-button");
+        newButton.onclick = function () {
+            let pair = addSelectPair(selectContainer, month, year, day);
+            saveDaySelections(month, year, day, selectContainer);
+            updateTotalRatio(selectContainer, month, year, day);
+            updateWeeklyTotals(month, year);
+        };
+
+        dayDiv.appendChild(selectContainer);
+        dayDiv.appendChild(newButton);
+        weekContainer.appendChild(dayDiv);
+
+        if (savedData[day]) {
+            savedData[day].forEach(pair => {
+                addSelectPair(selectContainer, month, year, day, pair);
+            });
+        }
+
+        updateTotalRatio(selectContainer, month, year, day);
+
+        // Cuando la semana está completa (7 días) o es el último día del mes, añadir la suma semanal
+        if ((new Date(year, month, day).getDay() === 6) || (day === lastDate)) {
+            // Completar la semana con espacios vacíos si es necesario
+            while (weekContainer.children.length < 7) {
+                let emptyDiv = document.createElement("div");
+                emptyDiv.classList.add("empty");
+                weekContainer.appendChild(emptyDiv);
+            }
+
+            let weekTotalDiv = document.createElement("div");
+            weekTotalDiv.classList.add("week-total");
+            weekTotalDiv.textContent = "Semana: 0.00";
+            weekContainer.appendChild(weekTotalDiv);
+
+            calendarDays.appendChild(weekContainer);
+            weekContainer = document.createElement("div");
+            weekContainer.classList.add("week-container");
+        }
+    }
+
+    updateWeeklyTotals(month, year);
+}
+
+
+
+function addSelectPair(container, month, year, day, savedValues = { asset: "", ratio: "", image: "" }) {
+    let pairContainer = document.createElement("div");
+    pairContainer.classList.add("pair-container");
+
+    let assetSelect = document.createElement("select");
+    ["", "NAS100", "US30", "SP500", "GBPUSD", "USJPY", "EURUSD", "XAUUSD", "Eliminar"].forEach(asset => {
+        let option = document.createElement("option");
+        option.value = asset;
+        option.textContent = asset || "-- Seleccionar --";
+        if (!asset) option.disabled = true;
+        if (asset === savedValues.asset) option.selected = true;
+        assetSelect.appendChild(option);
+    });
+
+    let ratioInput = document.createElement("input");
+    ratioInput.type = "number";
+    ratioInput.placeholder = "Ingrese ratio";
+    ratioInput.value = savedValues.ratio || "";
+    ratioInput.min = "-9999";  // Permitir números negativos
+    ratioInput.step = "0.01";  // Precisión de dos decimales
+
+    // Botón para añadir imagen
+    let imageButton = document.createElement("button");
+    imageButton.textContent = "Añadir Imagen";
+    imageButton.classList.add("image-button");
+
+    // Input oculto para seleccionar imagen
+    let imageInput = document.createElement("input");
+    imageInput.type = "file";
+    imageInput.accept = "image/*";
+    imageInput.style.display = "none";
+
+    // Imagen de vista previa
+    let imagePreview = document.createElement("img");
+    imagePreview.classList.add("image-preview");
+
+    if (savedValues.image) {
+        imagePreview.src = savedValues.image;
+        imagePreview.style.display = "block";
+    } else {
+        imagePreview.style.display = "none";
+    }
+
+    imageButton.onclick = () => imageInput.click();
+
+    imageInput.onchange = function () {
+        let file = imageInput.files[0];
+        if (file) {
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = "block";
+                savedValues.image = e.target.result;
+                saveDaySelections(month, year, day, container);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    imagePreview.onclick = function () {
+        openImageModal(imagePreview.src);
+    };
+
+    assetSelect.onchange = () => {
+        if (assetSelect.value === "Eliminar") {
+            container.removeChild(pairContainer);
+            saveDaySelections(month, year, day, container);
+        } else {
+            saveDaySelections(month, year, day, container);
+        }
+        updateTotalRatio(container, month, year, day);
+    };
+
+    ratioInput.oninput = () => {
+        saveDaySelections(month, year, day, container);
+        updateTotalRatio(container, month, year, day);
+    };
+
+    pairContainer.appendChild(assetSelect);
+    pairContainer.appendChild(ratioInput);
+    pairContainer.appendChild(imageButton);
+    pairContainer.appendChild(imageInput);
+    pairContainer.appendChild(imagePreview);
+    container.appendChild(pairContainer);
+
+    updateTotalRatio(container, month, year, day);
+}
+
+
+
+
+
+
+function saveDaySelections(month, year, day, container) {
+    let selections = [...container.children].map(pair => ({
+        asset: pair.children[0].value,
+        ratio: pair.children[1].value,
+        image: pair.children[4].src || ""
+    })).filter(pair => pair.asset !== "Eliminar");
+
+    let data = loadData(month, year);
+
+    if (selections.length > 0) {
+        data[day] = selections;
+    } else {
+        delete data[day];
+    }
+
+    saveData(month, year, data);
+}
+
+
+function openImageModal(imageSrc) {
+    let modal = document.createElement("div");
+    modal.classList.add("image-modal");
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <img src="${imageSrc}" class="modal-image">
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Ocultar el nombre del mes y las flechas
+    document.body.classList.add("hide-header");
+
+    // Cerrar el modal y restaurar el header
+    modal.querySelector(".close-modal").onclick = function () {
+        document.body.removeChild(modal);
+        document.body.classList.remove("hide-header"); // Mostrar el header nuevamente
+    };
+}
+
+
+    function updateTotalRatio(container, month, year, day) {
+    let total = 0;
+    
+    [...container.children].forEach(pair => {
+        let value = parseFloat(pair.children[1].value) || 0;
+        total += value;
+    });
+
+    let totalElement = container.parentElement.querySelector(".total-ratio");
+    if (!totalElement) {
+        totalElement = document.createElement("div");
+        totalElement.classList.add("total-ratio");
+        container.parentElement.appendChild(totalElement);
+    }
+    
+    totalElement.textContent = `Total: ${total.toFixed(2)}`;
+
+    let dayContainer = container.parentElement;
+
+    if (total > 0) {
+        dayContainer.style.backgroundColor = "#c8f7c5";
+    } else if (total < 0) {
+        dayContainer.style.backgroundColor = "#f7c5c5";
+    } else {
+        dayContainer.style.backgroundColor = "#ddd";
+    }
+
+    updateWeeklyTotals(month, year);
+}
+
+
+    
+function updateWeeklyTotals(month, year) {
+    let weekContainers = document.querySelectorAll(".week-container");
+
+    weekContainers.forEach(weekContainer => {
+        let weekTotal = 0;
+        let dayContainers = weekContainer.querySelectorAll(".day");
+
+        dayContainers.forEach(dayContainer => {
+            let totalElement = dayContainer.querySelector(".total-ratio");
+            if (totalElement) {
+                let totalValue = parseFloat(totalElement.textContent.replace("Total: ", "")) || 0;
+                weekTotal += totalValue;
+            }
+        });
+
+        let weekTotalElement = weekContainer.querySelector(".week-total");
+        if (weekTotalElement) {
+            weekTotalElement.textContent = `Semana: ${weekTotal.toFixed(2)}`;
+
+            // Remover clases previas
+            weekTotalElement.classList.remove("positive-week", "negative-week", "neutral-week");
+
+            // Aplicar color según el total
+            if (weekTotal > 0) {
+                weekTotalElement.classList.add("positive-week");
+            } else if (weekTotal < 0) {
+                weekTotalElement.classList.add("negative-week");
+            } else {
+                weekTotalElement.classList.add("neutral-week");
+            }
+        }
+    });
+}
+
+
+    function changeMonth(step) {
+        currentMonth += step;
+        renderCalendar(currentMonth, currentYear);
+    }
+
+    renderCalendar(currentMonth, currentYear);
+</script>
+
+</body>
+</html>
